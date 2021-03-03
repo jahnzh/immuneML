@@ -100,7 +100,7 @@ class DeepRC(MLMethod):
                  keep_dataset_in_ram, pytorch_device_name):
         super(DeepRC, self).__init__()
 
-        from deeprc.deeprc_binary.training import train
+        from deeprc.training import train
         self.training_function = train
 
         self.model = None
@@ -146,7 +146,7 @@ class DeepRC(MLMethod):
         self.feature_names = None
 
     def _metadata_to_hdf5(self, metadata_filepath: Path, label_name):
-        from deeprc.deeprc_binary.dataset_converters import DatasetToHDF5
+        from deeprc.dataset_converters import DatasetToHDF5
 
         hdf5_filepath = metadata_filepath.parent / f"{metadata_filepath.stem}.hdf5"
         converter = DatasetToHDF5(metadata_file=str(metadata_filepath),
@@ -198,8 +198,8 @@ class DeepRC(MLMethod):
         :param n_workers: the number of workers used in torch.utils.data.DataLoader
         :return: a Pytorch dataloader
         """
-        from deeprc.deeprc_binary.dataset_readers import RepertoireDataReaderBinary
-        from deeprc.deeprc_binary.dataset_readers import no_stack_collate_fn
+        from deeprc.dataset_readers import RepertoireDataReaderBinary
+        from deeprc.dataset_readers import no_stack_collate_fn
 
         sample_n_sequences = None if eval_only else self.sample_n_sequences
         training_batch_size = self.training_batch_size if is_train else 1
@@ -283,7 +283,7 @@ class DeepRC(MLMethod):
         return self.model
 
     def _fit_for_label(self, hdf5_filepath: Path, pre_loaded_hdf5_file, train_indices, val_indices, label: str, cores_for_training: int):
-        from deeprc.deeprc_binary.architectures import DeepRC as DeepRCInternal
+        from deeprc.architectures import DeepRC as DeepRCInternal
 
         train_dataloader = self.make_data_loader(hdf5_filepath, pre_loaded_hdf5_file, train_indices, label, eval_only=False, is_train=True,
                                                  n_workers=self.n_workers)
@@ -352,7 +352,7 @@ class DeepRC(MLMethod):
         return probabilities
 
     def _model_predict(self, model, dataloader):
-        """Based on the DeepRC function evaluate (deeprc.deeprc_binary.training.evaluate)"""
+        """Based on the DeepRC function evaluate (deeprc.training.evaluate)"""
         with torch.no_grad():
             model.to(device=self.pytorch_device)
             scoring_predictions = []

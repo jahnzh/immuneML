@@ -108,8 +108,8 @@ class DeepRCMotifDiscovery(MLReport):
         ----------
         intgrds_set_loader : torch.utils.data.DataLoader
             The dataset to compute IG for in form of a PyTorch DataLoader following the DeepRC format.
-            E.g. one of the dataloaders returned by deeprc.deeprc_binary.predefined_datasets.cmv_dataset().
-        deeprc_model : deeprc.deeprc_binary.architectures.DeepRC
+            E.g. one of the dataloaders returned by deeprc.predefined_datasets.cmv_dataset().
+        deeprc_model : deeprc.architectures.DeepRC
             DeepRC model to compute IG for.
             Weights of first CNN layer are accessed via deeprc_model.sequence_embedding_16bit.conv_aas.weight .
         n_steps : int
