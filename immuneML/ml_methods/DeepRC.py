@@ -148,7 +148,7 @@ class DeepRC(MLMethod):
     def _metadata_to_hdf5(self, repertoires_path: Path, label_name):
         from deeprc.deeprc_binary.dataset_converters import DatasetToHDF5
 
-        hdf5_filepath = metadata_filepath.parent / f"{metadata_filepath.stem}.hdf5"
+        hdf5_filepath = repertoires_path / f"encoded_data.hdf5"
         converter = DatasetToHDF5(repertoiresdata_directory=str(repertoires_path),
                                   sequence_column=DeepRCEncoder.SEQUENCE_COLUMN,
                                   sequence_counts_column=DeepRCEncoder.COUNTS_COLUMN,
