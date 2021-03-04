@@ -100,7 +100,7 @@ class DeepRC(MLMethod):
                  keep_dataset_in_ram, pytorch_device_name):
         super(DeepRC, self).__init__()
 
-        from deeprc.deeprc_binary.training import train
+        from deeprc.training import train
         self.training_function = train
 
         self.model = None
@@ -146,7 +146,7 @@ class DeepRC(MLMethod):
         self.feature_names = None
 
     def _metadata_to_hdf5(self, repertoires_path: Path, label_name):
-        from deeprc.deeprc_binary.dataset_converters import DatasetToHDF5
+        from deeprc.dataset_converters import DatasetToHDF5
 
         hdf5_filepath = repertoires_path / f"encoded_data.hdf5"
         converter = DatasetToHDF5(repertoiresdata_directory=str(repertoires_path),
@@ -209,8 +209,8 @@ class DeepRC(MLMethod):
         :param n_workers: the number of workers used in torch.utils.data.DataLoader
         :return: a Pytorch dataloader
         """
-        from deeprc.deeprc_binary.dataset_readers import RepertoireDataReaderBinary
-        from deeprc.deeprc_binary.dataset_readers import no_stack_collate_fn
+        from deeprc.dataset_readers import RepertoireDataReaderBinary
+        from deeprc.dataset_readers import no_stack_collate_fn
 
         sample_n_sequences = None if eval_only else self.sample_n_sequences
         training_batch_size = self.training_batch_size if is_train else 1
@@ -294,7 +294,8 @@ class DeepRC(MLMethod):
         return self.model
 
     def _fit_for_label(self, hdf5_filepath: Path, pre_loaded_hdf5_file, train_indices, val_indices, label: str, cores_for_training: int):
-        from deeprc.deeprc_binary.architectures import DeepRC as DeepRCInternal
+        from deeprc.architectures import DeepRC as DeepRCInternal
+        from deeprc.task_definitions import TaskDefinition
 
         train_dataloader = self.make_data_loader(hdf5_filepath, pre_loaded_hdf5_file, train_indices, label, eval_only=False, is_train=True,
                                                  n_workers=self.n_workers)
@@ -312,11 +313,15 @@ class DeepRC(MLMethod):
                                     sequence_reduction_fraction=self.sequence_reduction_fraction,
                                     reduction_mb_size=self.reduction_mb_size, device=self.pytorch_device)
 
-        self.training_function(self.model, trainingset_dataloader=train_dataloader, trainingset_eval_dataloader=train_eval_dataloader,
-                               validationset_eval_dataloader=val_eval_dataloader, results_directory=self.result_path / "deeprc_log",
-                               n_updates=self.n_updates, num_torch_threads=self.n_torch_threads, learning_rate=self.learning_rate,
+        self.training_function(model=self.model, task_definition=None, early_stopping_target_id=None,
+                               trainingset_dataloader=train_dataloader,
+                               trainingset_eval_dataloader=train_eval_dataloader,
+                               validationset_eval_dataloader=val_eval_dataloader,
+                               results_directory=self.result_path / "deeprc_log",
+                               n_updates=self.n_updates, show_progress=False, device=self.pytorch_device,
+                               num_torch_threads=self.n_torch_threads, learning_rate=self.learning_rate,
                                l1_weight_decay=self.l1_weight_decay, l2_weight_decay=self.l2_weight_decay,
-                               show_progress=False, device=self.pytorch_device, evaluate_at=self.evaluate_at)
+                               evaluate_at=self.evaluate_at)
 
     def fit_by_cross_validation(self, encoded_data: EncodedData, number_of_splits: int = 5, label_name: str = None, cores_for_training: int = -1,
                                 optimization_metric=None):
@@ -363,7 +368,7 @@ class DeepRC(MLMethod):
         return probabilities
 
     def _model_predict(self, model, dataloader):
-        """Based on the DeepRC function evaluate (deeprc.deeprc_binary.training.evaluate)"""
+        """Based on the DeepRC function evaluate (deeprc.training.evaluate)"""
         with torch.no_grad():
             model.to(device=self.pytorch_device)
             scoring_predictions = []
