@@ -6,6 +6,8 @@ from immuneML.environment.EnvironmentSettings import EnvironmentSettings
 from immuneML.util.ImportHelper import ImportHelper
 from immuneML.util.ParameterValidator import ParameterValidator
 from immuneML.util.ReflectionHandler import ReflectionHandler
+from immuneML.IO.dataset_import.IRISSequenceImport import IRISSequenceImport
+
 
 
 class MatchedReferenceUtil:
@@ -35,14 +37,17 @@ class MatchedReferenceUtil:
 
         format_str = reference_params["format"]
 
-        import_class = ReflectionHandler.get_class_by_name("{}Import".format(format_str))
-        default_params = DefaultParamsLoader.load(EnvironmentSettings.default_params_path / "datasets",
-                                          DefaultParamsLoader.convert_to_snake_case(format_str))
+        if format_str == "IRIS":  # todo refactor this when refactoring IRISSequenceImport
+            receptors = IRISSequenceImport.import_items(**seq_import_params)
+        else:
+            import_class = ReflectionHandler.get_class_by_name("{}Import".format(format_str))
+            default_params = DefaultParamsLoader.load(EnvironmentSettings.default_params_path / "datasets",
+                                              DefaultParamsLoader.convert_to_snake_case(format_str))
 
-        params = {**default_params, **seq_import_params}
+            params = {**default_params, **seq_import_params}
 
-        processed_params = DatasetImportParams.build_object(**params)
+            processed_params = DatasetImportParams.build_object(**params)
 
-        receptors = ImportHelper.import_items(import_class, reference_params["params"]["path"], processed_params)
+            receptors = ImportHelper.import_items(import_class, reference_params["params"]["path"], processed_params)
 
         return receptors
