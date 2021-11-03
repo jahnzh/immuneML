@@ -90,23 +90,27 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
 
         kmer_dataset = self.kmer_encoder.encode(dataset, kmer_params)
 
-        encoded_dataset = self._filter_features(kmer_dataset, label)
+        encoded_dataset = self._filter_features(kmer_dataset, label, params.learn_model)
 
         return encoded_dataset
 
-    def _filter_features(self, dataset: Dataset, label: Label) -> Dataset:
+    def _filter_features(self, dataset: Dataset, label: Label, learn_model: bool) -> Dataset:
 
         encoded_data = dataset.encoded_data
-        label_array = np.array(encoded_data.labels[label.name])
 
-        class1_selection = label_array == label.positive_class
-        class2_selection = np.logical_not(class1_selection)
+        if learn_model:
+            label_array = np.array(encoded_data.labels[label.name])
 
-        _, p_values = ttest_ind(encoded_data.examples[class1_selection, :].todense(), encoded_data.examples[class2_selection, :].todense(),
-                                equal_var=self.equal_variance, alternative=self.alternative_hypothesis)
+            class1_selection = label_array == label.positive_class
+            class2_selection = np.logical_not(class1_selection)
 
-        feature_indices = p_values < self.p_value_threshold
-        self.features = np.array(encoded_data.feature_names)[feature_indices].tolist()
+            _, p_values = ttest_ind(encoded_data.examples[class1_selection, :].todense(), encoded_data.examples[class2_selection, :].todense(),
+                                    equal_var=self.equal_variance, alternative=self.alternative_hypothesis)
+
+            feature_indices = p_values < self.p_value_threshold
+            self.features = np.array(encoded_data.feature_names)[feature_indices].tolist()
+        else:
+            feature_indices = [i for i in range(len(encoded_data.feature_names)) if encoded_data.feature_names[i] in self.features]
 
         encoded_dataset = dataset.clone()
         encoded_dataset.encoded_data.examples = encoded_data.examples[:, feature_indices]
