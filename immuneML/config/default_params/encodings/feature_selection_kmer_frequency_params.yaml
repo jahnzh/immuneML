@@ -1,0 +1,11 @@
+p_value_threshold: 0.05
+equal_variance: True
+alternative_hypothesis: two-sided
+kmer_params:
+    normalization_type: RELATIVE_FREQUENCY
+    reads: UNIQUE
+    sequence_encoding: CONTINUOUS_KMER
+    sequence_type: AMINO_ACID
+    k: 3
+    scale_to_unit_variance: True
+    scale_to_zero_mean: True
