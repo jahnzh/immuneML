@@ -117,6 +117,7 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
 
         encoded_dataset = dataset.clone()
         encoded_dataset.encoded_data.examples = encoded_data.examples[:, feature_indices]
+        encoded_dataset.encoded_data.feature_names = self.features
 
         return encoded_dataset
 
