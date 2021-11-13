@@ -13,7 +13,6 @@ from immuneML.util.ParameterValidator import ParameterValidator
 
 
 class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
-
     """
     This encoder represents the dataset in terms of k-mer frequencies and then performs feature selection using t-test. For k-mer frequency encoding,
     under the hood it uses the KmerFrequency encoder and then uses
@@ -32,7 +31,7 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
         equal_variance (bool): parameter of scipy's t-test function; if true, t-test is used, if false, Welch's t-test is used which does not assume
         equal population variance
 
-        kmer_params (dict): a set of parameters to be used with KmerFrequency encoder, as the first step of this encoding. For the full list of
+        kmer_encoder (dict): a set of parameters to be used with KmerFrequency encoder, as the first step of this encoding. For the full list of
         parameters, see :ref:`KmerFrequency` encoder documentation.
 
     YAML specification:
@@ -61,24 +60,27 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
 
         location = FeatureSelectionKmerFrequencyEncoder.__name__
 
-        ParameterValidator.assert_keys(params.keys(), ['p_value_threshold', 'alternative_hypothesis', 'equal_variance', 'kmer_params', 'name'],
+        ParameterValidator.assert_keys(params.keys(), ['p_value_threshold', 'alternative_hypothesis', 'equal_variance', 'kmer_encoder', 'name'],
                                        location, location)
 
         ParameterValidator.assert_type_and_value(params['p_value_threshold'], float, location, 'p_value_threshold', 0., 1.)
         ParameterValidator.assert_type_and_value(params['alternative_hypothesis'], str, location, 'alternative_hypothesis')
-        ParameterValidator.assert_in_valid_list(params['alternative_hypothesis'], ['two-sided', 'less', 'greater'], location, 'alternative_hypothesis')
+        ParameterValidator.assert_in_valid_list(params['alternative_hypothesis'], ['two-sided', 'less', 'greater'], location,
+                                                'alternative_hypothesis')
         ParameterValidator.assert_type_and_value(params['equal_variance'], bool, location, 'equal_variance')
 
-        kmer_encoder = KmerFrequencyEncoder.build_object(dataset, **params['kmer_params'])
+        kmer_encoder = KmerFrequencyEncoder.build_object(dataset, **params['kmer_encoder'])
 
         return FeatureSelectionKmerFrequencyEncoder(p_value_threshold=params['p_value_threshold'], equal_variance=params['equal_variance'],
-                                                    alternative_hypothesis=params['alternative_hypothesis'], kmer_encoder=kmer_encoder)
+                                                    alternative_hypothesis=params['alternative_hypothesis'], kmer_encoder=kmer_encoder,
+                                                    name=params['name'])
 
-    def __init__(self, p_value_threshold: float, alternative_hypothesis: str, equal_variance: bool, kmer_encoder: KmerFrequencyEncoder):
+    def __init__(self, p_value_threshold: float, alternative_hypothesis: str, equal_variance: bool, kmer_encoder: KmerFrequencyEncoder, name: str):
         self.p_value_threshold = p_value_threshold
         self.alternative_hypothesis = alternative_hypothesis
         self.equal_variance = equal_variance
         self.kmer_encoder = kmer_encoder
+        self.name = name
         self.features = []
 
     def encode(self, dataset: Dataset, params: EncoderParams):
@@ -99,16 +101,17 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
         encoded_data = dataset.encoded_data
 
         if learn_model:
-            label_array = np.array(encoded_data.labels[label.name])
 
-            class1_selection = label_array == label.positive_class
-            class2_selection = np.logical_not(class1_selection)
+            class1_data, class2_data = self._get_per_class_data(encoded_data, label)
 
-            _, p_values = ttest_ind(encoded_data.examples[class1_selection, :].todense(), encoded_data.examples[class2_selection, :].todense(),
-                                    equal_var=self.equal_variance, alternative=self.alternative_hypothesis)
+            _, p_values = ttest_ind(class1_data, class2_data, equal_var=self.equal_variance, alternative=self.alternative_hypothesis)
 
-            feature_indices = p_values < self.p_value_threshold
-            self.features = np.array(encoded_data.feature_names)[feature_indices].tolist()
+            feature_indices = p_values.flatten() < self.p_value_threshold
+            if feature_indices.sum() == 0:
+                raise ValueError(f"{FeatureSelectionKmerFrequencyEncoder.__name__}: no features were selected as relevant. Try adjusting the "
+                                 f"parameters of the encoding.")
+            else:
+                self.features = np.array(encoded_data.feature_names)[feature_indices].tolist()
         else:
             feature_indices = [i for i in range(len(encoded_data.feature_names)) if encoded_data.feature_names[i] in self.features]
 
@@ -117,7 +120,22 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
 
         return encoded_dataset
 
-    def  _prepare_label(self, params: EncoderParams):
+    def _get_per_class_data(self, encoded_data, label: Label):
+        label_array = np.array(encoded_data.labels[label.name])
+
+        class1_selection = label_array == label.positive_class
+        class2_selection = np.logical_not(class1_selection)
+
+        if isinstance(encoded_data.examples, np.ndarray):
+            class1_data = encoded_data.examples[class1_selection, :]
+            class2_data = encoded_data.examples[class2_selection, :]
+        else:
+            class1_data = encoded_data.examples[class1_selection, :].todense()
+            class2_data = encoded_data.examples[class2_selection, :].todense()
+
+        return class1_data, class2_data
+
+    def _prepare_label(self, params: EncoderParams):
 
         assert len(params.label_config.get_label_objects()) == 1, f"{FeatureSelectionKmerFrequencyEncoder.__name__}: no label object provided."
 

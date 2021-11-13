@@ -44,7 +44,7 @@ class TestKmerFreqReceptorEncoder(TestCase):
         lc.add_label("l1", [1, 2], positive_class=1)
 
         encoder = FeatureSelectionKmerFrequencyEncoder.build_object(dataset, **{
-            'kmer_params': {
+            'kmer_encoder': {
                 "normalization_type": NormalizationType.RELATIVE_FREQUENCY.name,
                 "reads": ReadsType.UNIQUE.name,
                 "sequence_encoding": SequenceEncodingType.CONTINUOUS_KMER.name,

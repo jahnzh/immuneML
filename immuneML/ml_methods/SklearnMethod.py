@@ -247,7 +247,8 @@ class SklearnMethod(MLMethod):
         from immuneML.encodings.kmer_frequency.KmerFrequencyEncoder import KmerFrequencyEncoder
         from immuneML.encodings.onehot.OneHotEncoder import OneHotEncoder
         from immuneML.encodings.word2vec.Word2VecEncoder import Word2VecEncoder
-        return [KmerFrequencyEncoder, OneHotEncoder, Word2VecEncoder, EvennessProfileEncoder]
+        from immuneML.encodings.kmer_frequency.FeatureSelectionKmerFrequencyEncoder import FeatureSelectionKmerFrequencyEncoder
+        return [KmerFrequencyEncoder, OneHotEncoder, Word2VecEncoder, EvennessProfileEncoder, FeatureSelectionKmerFrequencyEncoder]
 
     @staticmethod
     def get_usage_documentation(model_name):
