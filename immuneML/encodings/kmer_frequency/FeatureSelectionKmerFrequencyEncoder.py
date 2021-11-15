@@ -1,4 +1,5 @@
 import copy
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -108,8 +109,10 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
 
             feature_indices = p_values.flatten() < self.p_value_threshold
             if feature_indices.sum() == 0:
-                raise ValueError(f"{FeatureSelectionKmerFrequencyEncoder.__name__}: no features were selected as relevant. Try adjusting the "
-                                 f"parameters of the encoding.")
+                logging.warning(f"{FeatureSelectionKmerFrequencyEncoder.__name__}: no features were selected as relevant in encoder {self.name}. "
+                                f"Try adjusting the parameters of the encoding. Using all features for now.")
+                self.features = encoded_data.feature_names
+                feature_indices = np.ones_like(self.features).astype(np.bool)
             else:
                 self.features = np.array(encoded_data.feature_names)[feature_indices].tolist()
         else:
