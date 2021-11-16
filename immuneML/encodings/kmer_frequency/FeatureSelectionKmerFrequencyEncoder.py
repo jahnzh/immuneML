@@ -112,7 +112,7 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
                 logging.warning(f"{FeatureSelectionKmerFrequencyEncoder.__name__}: no features were selected as relevant in encoder {self.name}. "
                                 f"Try adjusting the parameters of the encoding. Using all features for now.")
                 self.features = encoded_data.feature_names
-                feature_indices = np.ones_like(self.features).astype(np.bool)
+                feature_indices = self._get_top_1_percent_indices(p_values.flatten())
             else:
                 self.features = np.array(encoded_data.feature_names)[feature_indices].tolist()
         else:
@@ -123,6 +123,15 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
         encoded_dataset.encoded_data.feature_names = self.features
 
         return encoded_dataset
+
+    def _get_top_1_percent_indices(self, p_values):
+        feature_count_to_keep = int(p_values.shape[0] * 0.01)
+        if feature_count_to_keep == 0:
+            logging.warning(f"{FeatureSelectionKmerFrequencyEncoder.__name__}: no features could be selected in {self.name} "
+                            f"encoder, keeping all features...")
+            return np.ones_like(p_values)
+        else:
+            return np.argsort(p_values)[:feature_count_to_keep]
 
     def _get_per_class_data(self, encoded_data, label: Label):
         label_array = np.array(encoded_data.labels[label.name])
