@@ -33,13 +33,12 @@ class TestImmuneMLApp(TestCase):
                                                           for i in range(4)]
                                                          for j in range(repertoire_count)])
 
-        dataset = RepertoireDataset(repertoires=repertoires, metadata_file=metadata, labels={"CD": [True, False], "CMV": [True, False]}, name="d1")
+        dataset = RepertoireDataset(repertoires=repertoires, metadata_file=metadata, labels={"CD": ['yes', 'no'], "CMV": [True, False]}, name="d1")
         ImmuneMLExporter.export(dataset, path)
 
         return path / "d1.iml_dataset"
 
     def test_run(self):
-
         dataset_path = self.create_dataset()
 
         specs = {
@@ -188,8 +187,12 @@ class TestImmuneMLApp(TestCase):
         with full_specs_path.open("r") as file:
             full_specs = yaml.load(file, Loader=yaml.FullLoader)
 
-        self.assertTrue("split_strategy" in full_specs["instructions"]["inst1"]["selection"] and full_specs["instructions"]["inst1"]["selection"]["split_strategy"] == "random")
-        self.assertTrue("split_count" in full_specs["instructions"]["inst1"]["selection"] and full_specs["instructions"]["inst1"]["selection"]["split_count"] == 1)
-        self.assertTrue("training_percentage" in full_specs["instructions"]["inst1"]["selection"] and full_specs["instructions"]["inst1"]["selection"]["training_percentage"] == 0.7)
+        self.assertTrue("split_strategy" in full_specs["instructions"]["inst1"]["selection"] and full_specs["instructions"]["inst1"]["selection"][
+            "split_strategy"] == "random")
+        self.assertTrue("split_count" in full_specs["instructions"]["inst1"]["selection"] and full_specs["instructions"]["inst1"]["selection"][
+            "split_count"] == 1)
+        self.assertTrue(
+            "training_percentage" in full_specs["instructions"]["inst1"]["selection"] and full_specs["instructions"]["inst1"]["selection"][
+                "training_percentage"] == 0.7)
 
         shutil.rmtree(path, ignore_errors=True)
