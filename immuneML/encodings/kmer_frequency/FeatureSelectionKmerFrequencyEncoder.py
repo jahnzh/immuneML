@@ -32,6 +32,11 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
         equal_variance (bool): parameter of scipy's t-test function; if true, t-test is used, if false, Welch's t-test is used which does not assume
         equal population variance
 
+        top_n_percent_features (float): alternatively to selecting features based on the p-value threshold, this parameter allows to select top n
+        percent of features that have the smallest p-value; this should be a value between 0 and 1; if both p-value threshold and
+        top_n_percent_features are specified at the same time, p-value threshold will be attempted first and if no features are selected,
+        top_n_percent_features parameter will be used instead
+
         kmer_encoder (dict): a set of parameters to be used with KmerFrequency encoder, as the first step of this encoding. For the full list of
         parameters, see :ref:`KmerFrequency` encoder documentation.
 
@@ -45,6 +50,7 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
                     p_value_threshold: 0.05
                     equal_variance: True
                     alternative_hypothesis: two-sided
+                    top_n_percent_features: None
                     kmer_params:
                         normalization_type: RELATIVE_FREQUENCY
                         reads: UNIQUE
@@ -61,25 +67,29 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
 
         location = FeatureSelectionKmerFrequencyEncoder.__name__
 
-        ParameterValidator.assert_keys(params.keys(), ['p_value_threshold', 'alternative_hypothesis', 'equal_variance', 'kmer_encoder', 'name'],
-                                       location, location)
+        ParameterValidator.assert_keys(params.keys(), ['p_value_threshold', 'alternative_hypothesis', 'equal_variance', 'top_n_percent_features',
+                                                       'kmer_encoder', 'name'], location, location)
 
-        ParameterValidator.assert_type_and_value(params['p_value_threshold'], float, location, 'p_value_threshold', 0., 1.)
+        if params['p_value_threshold']:
+            ParameterValidator.assert_type_and_value(params['p_value_threshold'], float, location, 'p_value_threshold', 0., 1.)
         ParameterValidator.assert_type_and_value(params['alternative_hypothesis'], str, location, 'alternative_hypothesis')
         ParameterValidator.assert_in_valid_list(params['alternative_hypothesis'], ['two-sided', 'less', 'greater'], location,
                                                 'alternative_hypothesis')
+        ParameterValidator.assert_type_and_value(params['top_n_percent_features'], float, location, 'top_n_percent_features', 0., 1.)
         ParameterValidator.assert_type_and_value(params['equal_variance'], bool, location, 'equal_variance')
 
         kmer_encoder = KmerFrequencyEncoder.build_object(dataset, **params['kmer_encoder'])
 
         return FeatureSelectionKmerFrequencyEncoder(p_value_threshold=params['p_value_threshold'], equal_variance=params['equal_variance'],
                                                     alternative_hypothesis=params['alternative_hypothesis'], kmer_encoder=kmer_encoder,
-                                                    name=params['name'])
+                                                    name=params['name'], top_n_percent_features=params['top_n_percent_features'])
 
-    def __init__(self, p_value_threshold: float, alternative_hypothesis: str, equal_variance: bool, kmer_encoder: KmerFrequencyEncoder, name: str):
+    def __init__(self, p_value_threshold: float, alternative_hypothesis: str, equal_variance: bool, top_n_percent_features: float,
+                 kmer_encoder: KmerFrequencyEncoder, name: str):
         self.p_value_threshold = p_value_threshold
         self.alternative_hypothesis = alternative_hypothesis
         self.equal_variance = equal_variance
+        self.top_n_percent_features = top_n_percent_features
         self.kmer_encoder = kmer_encoder
         self.name = name
         self.features = []
@@ -107,11 +117,14 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
 
             _, p_values = ttest_ind(class1_data, class2_data, equal_var=self.equal_variance, alternative=self.alternative_hypothesis)
 
-            feature_indices = p_values.flatten() < self.p_value_threshold
-            if feature_indices.sum() == 0:
-                logging.warning(f"{FeatureSelectionKmerFrequencyEncoder.__name__}: no features were selected as relevant in encoder {self.name}. "
-                                f"Try adjusting the parameters of the encoding. Using all features for now.")
-                feature_indices = self._get_top_1_percent_indices(p_values.flatten())
+            if self.p_value_threshold is not None:
+                feature_indices = p_values.flatten() < self.p_value_threshold
+                if feature_indices.sum() == 0:
+                    logging.warning(f"{FeatureSelectionKmerFrequencyEncoder.__name__}: no features were selected as relevant in encoder {self.name}. "
+                                    f"Try adjusting the parameters of the encoding. Using all features for now.")
+                    feature_indices = self._get_top_n_percent_indices(p_values.flatten())
+            else:
+                feature_indices = self._get_top_n_percent_indices(p_values.flatten())
             self.features = np.array(encoded_data.feature_names)[feature_indices].tolist()
         else:
             feature_indices = [i for i in range(len(encoded_data.feature_names)) if encoded_data.feature_names[i] in self.features]
@@ -122,8 +135,8 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
 
         return encoded_dataset
 
-    def _get_top_1_percent_indices(self, p_values):
-        feature_count_to_keep = int(p_values.shape[0] * 0.01)
+    def _get_top_n_percent_indices(self, p_values):
+        feature_count_to_keep = int(p_values.shape[0] * self.top_n_percent_features)
         if feature_count_to_keep == 0:
             logging.warning(f"{FeatureSelectionKmerFrequencyEncoder.__name__}: no features could be selected in {self.name} "
                             f"encoder, keeping all features...")
