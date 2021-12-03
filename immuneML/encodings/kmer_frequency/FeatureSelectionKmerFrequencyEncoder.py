@@ -50,7 +50,7 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
                     p_value_threshold: 0.05
                     equal_variance: True
                     alternative_hypothesis: two-sided
-                    top_n_percent_features: None
+                    top_n_percent_features: 0.01
                     kmer_params:
                         normalization_type: RELATIVE_FREQUENCY
                         reads: UNIQUE
