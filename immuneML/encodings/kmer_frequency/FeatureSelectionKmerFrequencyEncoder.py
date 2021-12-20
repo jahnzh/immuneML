@@ -142,7 +142,8 @@ class FeatureSelectionKmerFrequencyEncoder(DatasetEncoder):
                             f"encoder, keeping all features...")
             return np.ones_like(p_values, dtype=bool)
         else:
-            return np.argsort(p_values)[:feature_count_to_keep].astype(int)
+            indices_to_keep = np.argsort(p_values)[:feature_count_to_keep].astype(int)
+            return np.array([True if index in indices_to_keep else False for index in range(p_values.shape[0])])
 
     def _get_per_class_data(self, encoded_data, label: Label):
         label_array = np.array(encoded_data.labels[label.name])
