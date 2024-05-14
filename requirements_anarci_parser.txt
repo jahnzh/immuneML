@@ -1,0 +1,2 @@
+# main packages
+pyarrow>=16.0.0
